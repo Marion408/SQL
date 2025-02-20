@@ -2,15 +2,18 @@
 ########################################    PROJET INSEE               ##################################################################
 ########################################    Autheur : Tom Bourachot    ##################################################################
 ########################################              Marion Turgault  ##################################################################
-########################################    Date : 19/02/2024          ##################################################################
+########################################    Date : 20/02/2024          ##################################################################
+########################################    Script : INTERFACE         ##################################################################
 #########################################################################################################################################
 
-### IMPORTATION DES LIBRAIRIES
+
+# ------------------ IMPORTATION DES LIBRAIRIES ------------------------------ #
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 
+# ------------------ CONNEXION A LA BASE DE DONNEES ------------------------------ #
 # Définir le chemin de la base de données SQLite
 db_path = "insee.db"
 
@@ -22,8 +25,7 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
     
-    
-### FONCTION D'EXECUTION DES REQUETES
+# ------------------ FONCTION D'EXECUTION DES REQUETES ------------------------------ #
 def execute_query(session, query, params=None):
     try:
         if params:
@@ -33,11 +35,11 @@ def execute_query(session, query, params=None):
         df = pd.DataFrame(result.fetchall(), columns=result.keys())
         return df
     except Exception as e:
-        print(f"Erreur lors de l'execution de la requÃªte : {e}")
-        return pd.DataFrame()
+        print(f"Erreur lors de l'execution de la requête : {e}")
+        return None
     
 
-### FONCTION POUR ELIMINER LES ACCENTS D'UN MOT
+# ------------------ FONCTION POUR ELIMINER LES ACCENTS D'UN MOT ------------------------------ #
 def accent(str):
     tableAccent = {
     'àâãäåáǎăąā': 'a',
@@ -63,8 +65,9 @@ def accent(str):
                 break
         motSansAccents += i
     return motSansAccents
-    
-### FONCTIONS POUR CHAQUE CHOIX DU MENU PRINCIPAL
+
+
+# ------------------ FONCTIONS POUR CHAQUE CHOIX DU MENU PRINCIPAL ------------------------------ #
 def afficher_regions(session):
     query = text("SELECT libelle AS nom_region, reg AS code_region FROM region ORDER BY reg")
     df = execute_query(session, query)
@@ -76,21 +79,23 @@ def afficher_departements(session, region_choisie):
     return df
     
 def afficher_annees(session, departement_choisi) :
-    query = text(f"""
-        SELECT DISTINCT Annee 
-        FROM population 
-        WHERE {departement_choisi} = Departement 
+    query = text("""
+        SELECT DISTINCT COALESCE(P.Annee, V.Annee) AS Annee
+        FROM population P 
+        FULL OUTER JOIN variation V ON V.Region = P.Region AND V.Annee = P.Annee
+        WHERE :departement = P.Departement OR :departement = V.Departement
         ORDER BY Annee
     """)
     df = execute_query(session, query, {'departement': departement_choisi})
     print(df)
 
-
 def afficher_population(session, departement, annee):
-    query = text(f"""
-        SELECT * 
-        FROM population 
-        WHERE Departement = {departement} AND Annee = {annee}
+    query = text("""
+        SELECT P.*, V.*
+        FROM population P
+        FULL OUTER JOIN variation V ON V.Region = P.Region AND V.Annee = P.Annee
+        WHERE (P.Departement = :departement OR V.Departement = :departement)
+            AND (P.Annee = :annee OR V.Annee = :annee)
     """)
     df = execute_query(session, query, {'departement': departement, 'annee': annee})
     if df.empty:
@@ -104,17 +109,16 @@ def afficher_donnees_theme(session, departement, annee, theme):
     else :
         table = 'indice_economie'
     
-    query = text(f"""
-        SELECT indicateur, valeur 
-        FROM {table} 
-        WHERE Departement = {departement} AND Annee = {annee}
-    """)
-    df = execute_query(session, query, {'departement': departement, 'annee': annee})
-    print(df)
+    query = text("""
+    SELECT indicateur, valeur 
+    FROM :table 
+    WHERE Departement = :departement AND Annee = :annee
+""")
+df = execute_query(session, query, {'table': table, 'departement': departement, 'annee': annee})
     
     
-    
-### LES FONCTIONS D'AFFICHAGE
+
+# ------------------ FONCTION D'AFFICHAGE DU MENU ------------------------------ #
 def menu():
     print("-------------------------------------------------------")
     print("\nMenu :")
@@ -126,8 +130,8 @@ def menu():
     print("0 - Quit")
     print("-------------------------------------------------------")
     
-    
 
+# ------------------ FONCTIONS PRINCIPALE ------------------------------ #
 def menu_principal():
     print("Bienvenue")
     # Connection a la base de donnee
@@ -201,5 +205,5 @@ def menu_principal():
     print("Au revoir!")
 
 
-### EXECUTION DU PROGRAMME
+# ------------------ EXECUTION DU PROGRAMME ------------------------------ #
 menu_principal()

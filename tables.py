@@ -1,14 +1,25 @@
+#########################################################################################################################################
+########################################    PROJET INSEE               ##################################################################
+########################################    Autheur : Tom Bourachot    ##################################################################
+########################################              Marion Turgault  ##################################################################
+########################################    Date : 20/02/2024          ##################################################################
+########################################    Script : CREATION_TABLES   ##################################################################
+#########################################################################################################################################
+
+
+# ------------------ IMPORTATION DES LIBRAIRIES ------------------------------ #
 import pandas as pd
 import psycopg2
 import psycopg2.extras
 import sqlite3
 import numpy as np
 
-# -------------------------- #
 
+# ------------------ CONNEXION A LA BASE DE DONNEES ------------------------------ #
 db_path = "insee.db"
 conn = sqlite3.connect(db_path)
 cur = conn.cursor()
+
 
 
 # ------------------ TABLES REGION ET DEPARTEMENT ------------------------------ #
@@ -23,7 +34,7 @@ def detect_sql_type(series):
         return "TEXT"
 
 def generate_create_table_sql(file_path, table_name, primary_key):
-    """GenÃ¨re et execute une requÃªte CREATE TABLE et retourne les colonnes valides pour l'insertion."""
+    """Genere et execute une requête CREATE TABLE et retourne les colonnes valides pour l'insertion."""
     df = pd.read_csv(file_path, sep=',')
     df.columns = df.columns.str.lower()
 
@@ -59,7 +70,7 @@ for file_path, (table, primary_key) in files.items():
     df_filtered, valid_columns = generate_create_table_sql(file_path, table, primary_key)
 
     if df_filtered is not None and not df_filtered.empty:
-        # Generation de la requÃªte d'insertion avec les colonnes valides
+        # Generation de la requête d'insertion avec les colonnes valides
         columns_sql = ", ".join([f'"{col}"' for col in valid_columns])
         values_placeholder = ", ".join(["?"] * len(valid_columns))
         insert_query = f"INSERT INTO {table} ({columns_sql}) VALUES ({values_placeholder})"
@@ -101,7 +112,7 @@ reg_population = reg_population.iloc[:19, :]
 
 # ---------------------------------- #
 
-# -- Renommage des colonnes des tableaux
+# -- Renommage des colonnes des tableaux --
 
 reg_economie.columns = ["Id", "Id_Geo", "Nom", "Taux_Activite_2019", "Taux_Activite_2017", "Taux_Emplois_2014", 
                                "Taux_Emplois_2009", "Part_Diplomes_2017", "Part_Jeunes_Diplomes_2014", "Part_Jeunes_Diplomes_2009", "Transport_Voiture_2014", 
